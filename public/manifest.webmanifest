@@ -1,0 +1,11 @@
+{
+  "name": "Eskoling Tycoon",
+  "short_name": "Eskoling",
+  "description": "Game tycoon es kopi keliling 3D, dari Cikapundung sampai Braga.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1b1838",
+  "theme_color": "#1b1838",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
