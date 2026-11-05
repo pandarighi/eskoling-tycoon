@@ -81,6 +81,10 @@ export interface Difficulty {
   pengaliPembeli: number;
   /** boleh melewati hari tanpa jualan (mis. saat hujan) */
   bisaSkip: boolean;
+  /** reputasi saat mulai main */
+  reputasiAwal: number;
+  /** seberapa kuat reputasi menentukan minat beli: faktor = (1 - bobot) + bobot × reputasi */
+  bobotReputasi: number;
 }
 
 export interface Policy {

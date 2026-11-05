@@ -292,3 +292,6 @@ input[type='range'] { width: 100%; accent-color: var(--kopi); height: 28px; }
 @media (orientation: portrait) {
   .screen-jualan .zoom-ctl { top: 42%; }
 }
+
+.row-btn { display: flex; gap: 8px; margin-bottom: 6px; }
+.row-btn .btn { flex: 1; }

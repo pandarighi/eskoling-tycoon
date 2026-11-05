@@ -15,7 +15,7 @@ export function newGame(mode: DifficultyId, seed = Date.now() % 1e9): GameState 
     hari: 1,
     mode,
     uang: MODE[mode].modalAwal,
-    reputasi: 0.3,
+    reputasi: MODE[mode].reputasiAwal,
     lokasi: 0,
     stok: kosong(),
     umurStok: {},
@@ -210,7 +210,7 @@ export function simulateDay(input: GameState, plan: DayPlan): { state: GameState
     const seg = rng.pick(lok.segmen);
     const sibuk = jam < 1.5 || (jam >= 5.5 && jam < 7) ? 1.45 : 0.8;
     const wajar = lok.hargaWajar * SEGMEN[seg].toleransiHarga;
-    const pBeli = clamp(lok.minatDasar * mode.pengaliPembeli * cuacaInfo.permintaan * (0.5 + 0.5 * state.reputasi) * minat * sibuk * Math.pow(wajar / harga, lok.elastisitas), 0, 0.95);
+    const pBeli = clamp(lok.minatDasar * mode.pengaliPembeli * cuacaInfo.permintaan * (1 - mode.bobotReputasi + mode.bobotReputasi * state.reputasi) * minat * sibuk * Math.pow(wajar / harga, lok.elastisitas), 0, 0.95);
     if (rng.next() >= pBeli) {
       const mahal = harga > wajar * 1.3 && rng.next() < 0.1;
       if (mahal) tambahKeluhan(keluhan, 'Kemahalan');

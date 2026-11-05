@@ -41,9 +41,9 @@ export const PELUANG_CUACA: Record<'kemarau' | 'penghujan', Record<WeatherId, nu
 };
 
 export const MODE: Record<DifficultyId, Difficulty> = {
-  easy: { id: 'easy', nama: 'Easy', modalAwal: 250_000, pengaliSyarat: 0.7, fluktuasiHarga: 0.08, akurasiCuaca: 0.9, peluangKebijakan: 0.04, penaltiReputasi: 0.8, pengaliPembeli: 1.3, bisaSkip: true },
-  normal: { id: 'normal', nama: 'Normal', modalAwal: 150_000, pengaliSyarat: 1.0, fluktuasiHarga: 0.15, akurasiCuaca: 0.75, peluangKebijakan: 0.08, penaltiReputasi: 1.0, pengaliPembeli: 1.0, bisaSkip: true },
-  hard: { id: 'hard', nama: 'Hard', modalAwal: 100_000, pengaliSyarat: 1.5, fluktuasiHarga: 0.25, akurasiCuaca: 0.6, peluangKebijakan: 0.14, penaltiReputasi: 1.4, pengaliPembeli: 1.0, bisaSkip: true },
+  easy: { id: 'easy', nama: 'Easy', modalAwal: 250_000, pengaliSyarat: 0.7, fluktuasiHarga: 0.08, akurasiCuaca: 0.9, peluangKebijakan: 0.04, penaltiReputasi: 0.8, pengaliPembeli: 1.3, bisaSkip: true, reputasiAwal: 0.3, bobotReputasi: 0.5 },
+  normal: { id: 'normal', nama: 'Normal', modalAwal: 150_000, pengaliSyarat: 1.0, fluktuasiHarga: 0.15, akurasiCuaca: 0.75, peluangKebijakan: 0.08, penaltiReputasi: 1.0, pengaliPembeli: 1.0, bisaSkip: true, reputasiAwal: 0.3, bobotReputasi: 0.8 },
+  hard: { id: 'hard', nama: 'Hard', modalAwal: 100_000, pengaliSyarat: 1.5, fluktuasiHarga: 0.25, akurasiCuaca: 0.6, peluangKebijakan: 0.14, penaltiReputasi: 1.4, pengaliPembeli: 1.0, bisaSkip: true, reputasiAwal: 0.0, bobotReputasi: 0.85 },
 };
 
 /** Kebijakan fiktif (satire). Muncul mulai lokasi 2. */

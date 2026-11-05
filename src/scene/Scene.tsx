@@ -1,13 +1,14 @@
 import { OrbitControls, OrthographicCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Color, DirectionalLight, Fog, InstancedMesh, MOUSE, Object3D, TOUCH, type OrthographicCamera as OrthographicCameraImpl } from 'three';
 import { useLive } from '../live';
 import type { CustomerEvent, UpgradeId, WeatherId } from '../sim/types';
 import { Cart } from './Cart';
 import { Crowd } from './Crowd';
 import { D, Diorama, W } from './Diorama';
+import { GlbWorld, pakaiGlb } from './GlbWorld';
 import { THEMES } from './themes';
 
 const ZOOM_MIN = 0.75;
@@ -41,12 +42,16 @@ function Hujan({ deras }: { deras: boolean }) {
 }
 
 /** Kamera ortografis isometrik + zoom/geser: pinch dua jari di HP, scroll mouse & tombol +/− di laptop. */
-function KameraIso() {
+function KameraIso({ besar }: { besar: boolean }) {
   const { size } = useThree();
   const portrait = size.height > size.width;
-  // portrait (HP berdiri): lebih dekat & berpusat ke gerobak + antrean; landscape: seluruh diorama
-  const zoom = portrait ? Math.min(size.width / 13, size.height / 10) : Math.min(size.width / 17, size.height / 10.5);
-  const t = useMemo<[number, number, number]>(() => (portrait ? [1.1, 0.6, 0.8] : [0, 0.6, 0.4]), [portrait]);
+  // portrait (HP berdiri): lebih dekat & berpusat ke gerobak + antrean; landscape: seluruh diorama.
+  // Diorama GLB (16×16 m) lebih luas dari diorama lama, jadi kamera dibuat lebih jauh.
+  const zoom = besar
+    ? portrait ? Math.min(size.width / 17, size.height / 22) : Math.min(size.width / 34, size.height / 21.5)
+    : portrait ? Math.min(size.width / 13, size.height / 10) : Math.min(size.width / 17, size.height / 10.5);
+  const t = useMemo<[number, number, number]>(() => (besar ? (portrait ? [3.5, 1.2, 2.5] : [0, 1.2, 0]) : portrait ? [1.1, 0.6, 0.8] : [0, 0.6, 0.4]), [portrait, besar]);
+  const batas = besar ? 7 : 5;
   const controls = useRef<OrbitControlsImpl>(null);
   const cam = useRef<OrthographicCameraImpl>(null);
 
@@ -77,10 +82,10 @@ function KameraIso() {
 
   return (
     <>
-      <OrthographicCamera ref={cam} key={portrait ? 'p' : 'l'} makeDefault position={[t[0] + 11, t[1] + 10, t[2] + 13]} zoom={zoom} near={-50} far={100} />
+      <OrthographicCamera ref={cam} key={`${portrait ? 'p' : 'l'}${besar ? 'b' : ''}`} makeDefault position={[t[0] + 11, t[1] + 10, t[2] + 13]} zoom={zoom} near={-50} far={100} />
       <OrbitControls
         ref={controls}
-        key={`ctl-${portrait ? 'p' : 'l'}`}
+        key={`ctl-${portrait ? 'p' : 'l'}${besar ? 'b' : ''}`}
         target={t}
         enableRotate={false}
         enableDamping
@@ -96,8 +101,8 @@ function KameraIso() {
           const o = controls.current;
           if (!o) return;
           const tg = o.target;
-          const cx = Math.max(-5, Math.min(5, tg.x));
-          const cz = Math.max(-3, Math.min(3.5, tg.z));
+          const cx = Math.max(-batas, Math.min(batas, tg.x));
+          const cz = Math.max(besar ? -batas : -3, Math.min(besar ? batas : 3.5, tg.z));
           const cy = Math.max(-1, Math.min(2, tg.y));
           if (cx !== tg.x || cy !== tg.y || cz !== tg.z) {
             const dx = cx - tg.x, dy = cy - tg.y, dz = cz - tg.z;
@@ -113,7 +118,7 @@ function KameraIso() {
 }
 
 /** Matahari bergerak dari pagi ke sore mengikuti progres hari jualan. */
-function Pencahayaan({ cuaca, live, neon }: { cuaca: WeatherId; live: boolean; neon: number }) {
+function Pencahayaan({ cuaca, live, neon, besar }: { cuaca: WeatherId; live: boolean; neon: number; besar: boolean }) {
   const sun = useRef<DirectionalLight>(null);
   const { scene } = useThree();
   const gelap = cuaca === 'hujan' ? 0.45 : cuaca === 'gerimis' ? 0.65 : cuaca === 'berawan' ? 0.8 : 1;
@@ -131,7 +136,7 @@ function Pencahayaan({ cuaca, live, neon }: { cuaca: WeatherId; live: boolean; n
   return (
     <>
       <hemisphereLight args={['#dfe8ff', '#6b5a48', 0.9 * gelap + neon * 0.1]} />
-      <directionalLight ref={sun} castShadow position={[6, 9, 6]} shadow-mapSize={[1024, 1024]} shadow-camera-left={-9} shadow-camera-right={9} shadow-camera-top={9} shadow-camera-bottom={-9} />
+      <directionalLight ref={sun} castShadow position={[6, 9, 6]} shadow-mapSize={besar ? [2048, 2048] : [1024, 1024]} shadow-camera-left={besar ? -13 : -9} shadow-camera-right={besar ? 13 : 9} shadow-camera-top={besar ? 13 : 9} shadow-camera-bottom={besar ? -13 : -9} shadow-camera-far={besar ? 60 : 50} shadow-bias={-0.0004} shadow-normalBias={0.02} />
     </>
   );
 }
@@ -155,6 +160,7 @@ export interface SceneProps {
   warna: string;
   namaMenu: string;
   upgrade: Partial<Record<UpgradeId, number>>;
+  penjual: 'L' | 'P';
   onSelesai?: () => void;
 }
 
@@ -162,14 +168,23 @@ export function Scene(p: SceneProps) {
   const theme = THEMES[p.lokasi] ?? THEMES[0];
   const langit = p.asap ? '#8c8478' : LANGIT_CUACA[p.cuaca] ?? theme.langit;
   const ramai = p.live;
+  const glb = pakaiGlb(p.lokasi);
   return (
     <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true, powerPreference: 'high-performance' }}>
       <Background warna={langit} />
-      <KameraIso />
-      <Pencahayaan cuaca={p.cuaca} live={p.live} neon={theme.neon} />
-      <Diorama theme={theme} lokasi={p.lokasi} />
-      <Cart warna={p.warna} namaMenu={p.namaMenu} ramai={ramai} upgrade={p.upgrade} />
-      <Crowd events={p.events} lokasi={p.lokasi} live={p.live} speed={p.speed} durasi={40} onSelesai={p.onSelesai} />
+      <KameraIso besar={glb} />
+      <Pencahayaan cuaca={p.cuaca} live={p.live} neon={theme.neon} besar={glb} />
+      {glb ? (
+        <Suspense fallback={null}>
+          <GlbWorld lokasi={p.lokasi} warna={p.warna} namaMenu={p.namaMenu} penjual={p.penjual} events={p.events} live={p.live} speed={p.speed} durasi={40} onSelesai={p.onSelesai} />
+        </Suspense>
+      ) : (
+        <>
+          <Diorama theme={theme} lokasi={p.lokasi} />
+          <Cart warna={p.warna} namaMenu={p.namaMenu} ramai={ramai} upgrade={p.upgrade} />
+          <Crowd events={p.events} lokasi={p.lokasi} live={p.live} speed={p.speed} durasi={40} onSelesai={p.onSelesai} />
+        </>
+      )}
       {(p.cuaca === 'hujan' || p.cuaca === 'gerimis') && <Hujan deras={p.cuaca === 'hujan'} />}
     </Canvas>
   );

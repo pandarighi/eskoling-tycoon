@@ -2,3 +2,5 @@ node_modules
 dist
 .vercel
 _backup/
+review/
+*.blend1

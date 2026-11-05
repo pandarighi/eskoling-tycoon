@@ -30,6 +30,7 @@ export default function App() {
           warna={save.kustom.warna}
           namaMenu={save.kustom.namaMenu || 'Es Kopi'}
           upgrade={game?.upgrade ?? {}}
+          penjual={save.kustom.penjual ?? 'L'}
           onSelesai={selesaiJualan}
         />
         {(screen === 'jualan' || screen === 'prep' || screen === 'kustom') && <ZoomButtons />}

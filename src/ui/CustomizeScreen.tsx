@@ -23,6 +23,18 @@ export function CustomizeScreen() {
       </section>
 
 
+      <section className="card">
+        <h3>Penjual</h3>
+        <div className="row-btn" role="group" aria-label="Pilih penjual">
+          {([['L', 'Laki-laki'], ['P', 'Perempuan']] as const).map(([v, label]) => (
+            <button key={v} className={`btn ${(k.penjual ?? 'L') === v ? 'primary' : ''}`} aria-pressed={(k.penjual ?? 'L') === v} onClick={() => setKustom({ penjual: v })}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <small className="muted">Kaos & topi/hijab penjual ikut warna gerobak</small>
+      </section>
+
       {(['normal', 'pastel'] as const).map((p) => (
         <section className="card" key={p}>
           <h3>Warna {p === 'normal' ? 'normal' : 'pastel'}</h3>

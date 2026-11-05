@@ -29,6 +29,8 @@ export interface Kustom {
   /** @deprecated fitur maskot dihapus; dibiarkan agar save lama tetap terbaca */
   maskot?: string;
   warna: string;
+  /** model penjual: laki-laki / perempuan */
+  penjual?: 'L' | 'P';
 }
 
 interface SaveSlot {
@@ -45,7 +47,7 @@ interface SaveFile {
 }
 
 const KEY = 'eskoling-tycoon-save-v1';
-const DEFAULT_KUSTOM: Kustom = { namaMenu: 'Es Kopi Susu Aren', warna: '#e9a917' };
+const DEFAULT_KUSTOM: Kustom = { namaMenu: 'Es Kopi Susu Aren', warna: '#e9a917', penjual: 'L' };
 
 function loadSave(): SaveFile {
   const blank: SaveFile = {
