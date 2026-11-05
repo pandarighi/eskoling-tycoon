@@ -34,7 +34,7 @@ const BASE = import.meta.env.BASE_URL;
 const DRACO = `${BASE}draco/`;
 const M = (f: string) => `${BASE}models/${f}`;
 
-export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb') };
+export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb'), 2: M('lokasi3.glb') };
 export const pakaiGlb = (lokasi: number) => lokasi in LOKASI_GLB;
 
 const MODEL: Record<string, string> = {
@@ -48,16 +48,20 @@ const MODEL: Record<string, string> = {
   sopir: M('npc-sopir-angkot.glb'),
   ojol: M('npc-ojol.glb'),
   ibuBelanja: M('npc-ibu-belanja.glb'),
+  pelajarL: M('npc-pelajar-putra.glb'),
+  pelajarP: M('npc-pelajar-putri.glb'),
+  satpam: M('npc-satpam.glb'),
 };
 
-/** Model pembeli per segmen & lokasi. Pelajar belum punya model sendiri → sementara anak muda. */
+/** Model pembeli per segmen & lokasi. */
 const PEMBELI: Record<number, Partial<Record<SegmentId, string[]>>> = {
-  0: { warga: ['ibu', 'bapak', 'ibu', 'bapak'], pelajar: ['anakmuda'], ojol: ['ojol'] },
-  1: { warga: ['ibu', 'ibuBelanja'], pelajar: ['anakmuda'], ojol: ['ojol'] },
+  0: { warga: ['ibu', 'bapak', 'ibu', 'bapak'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
+  1: { warga: ['ibu', 'ibuBelanja'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
+  2: { warga: ['ibu', 'bapak'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
 };
-const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'] };
-const PEJALAN_SERENTAK = [4, 6];
-const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6]];
+const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'], 2: ['pelajarL', 'pelajarP', 'pelajarL', 'pelajarP', 'ibu', 'ojol'] };
+const PEJALAN_SERENTAK = [4, 6, 7];
+const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6], [1.4, 1.4]];
 const MAX_AKTOR = 18;
 const SPEED = 1.1;
 
@@ -342,7 +346,7 @@ export function GlbWorld(p: GlbWorldProps) {
   const visual = useMemo(() => {
     if (!p.events) return [];
     const lewat = p.events.filter((e) => e.tipe === 'lewat' && !e.keluhan);
-    const keep = Math.min(1, [18, 30][p.lokasi] / Math.max(1, lewat.length));
+    const keep = Math.min(1, ([18, 30, 40][p.lokasi] ?? 30) / Math.max(1, lewat.length));
     let acc = 0;
     return p.events.filter((e) => {
       if (e.tipe !== 'lewat' || e.keluhan) return true;
