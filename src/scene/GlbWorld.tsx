@@ -34,7 +34,7 @@ const BASE = import.meta.env.BASE_URL;
 const DRACO = `${BASE}draco/`;
 const M = (f: string) => `${BASE}models/${f}`;
 
-export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb'), 2: M('lokasi3.glb') };
+export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb'), 2: M('lokasi3.glb'), 3: M('lokasi4.glb'), 4: M('lokasi5.glb') };
 export const pakaiGlb = (lokasi: number) => lokasi in LOKASI_GLB;
 
 const MODEL: Record<string, string> = {
@@ -51,6 +51,9 @@ const MODEL: Record<string, string> = {
   pelajarL: M('npc-pelajar-putra.glb'),
   pelajarP: M('npc-pelajar-putri.glb'),
   satpam: M('npc-satpam.glb'),
+  kucing: M('npc-kucing-oren.glb'),
+  kantoranL: M('npc-kantoran-putra.glb'),
+  kantoranP: M('npc-kantoran-putri.glb'),
 };
 
 /** Model pembeli per segmen & lokasi. */
@@ -58,10 +61,12 @@ const PEMBELI: Record<number, Partial<Record<SegmentId, string[]>>> = {
   0: { warga: ['ibu', 'bapak', 'ibu', 'bapak'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
   1: { warga: ['ibu', 'ibuBelanja'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
   2: { warga: ['ibu', 'bapak'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
+  3: { anakmuda: ['anakmuda'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
+  4: { kantoran: ['kantoranL', 'kantoranP'], anakmuda: ['anakmuda'], warga: ['ibu', 'bapak'] },
 };
-const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'], 2: ['pelajarL', 'pelajarP', 'pelajarL', 'pelajarP', 'ibu', 'ojol'] };
-const PEJALAN_SERENTAK = [4, 6, 7];
-const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6], [1.4, 1.4]];
+const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'], 2: ['pelajarL', 'pelajarP', 'pelajarL', 'pelajarP', 'ibu', 'ojol'], 3: ['anakmuda', 'anakmuda', 'anakmuda', 'pelajarL', 'pelajarP', 'ojol', 'ibu'], 4: ['kantoranL', 'kantoranP', 'kantoranL', 'kantoranP', 'anakmuda', 'ibu', 'bapak', 'pelajarP'] };
+const PEJALAN_SERENTAK = [4, 6, 7, 8, 9];
+const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6], [1.4, 1.4], [1.2, 1.2], [1.0, 1.0]];
 const MAX_AKTOR = 18;
 const SPEED = 1.1;
 
@@ -346,7 +351,7 @@ export function GlbWorld(p: GlbWorldProps) {
   const visual = useMemo(() => {
     if (!p.events) return [];
     const lewat = p.events.filter((e) => e.tipe === 'lewat' && !e.keluhan);
-    const keep = Math.min(1, ([18, 30, 40][p.lokasi] ?? 30) / Math.max(1, lewat.length));
+    const keep = Math.min(1, ([18, 30, 40, 48, 56][p.lokasi] ?? 30) / Math.max(1, lewat.length));
     let acc = 0;
     return p.events.filter((e) => {
       if (e.tipe !== 'lewat' || e.keluhan) return true;
