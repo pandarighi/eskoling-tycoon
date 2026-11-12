@@ -34,7 +34,7 @@ const BASE = import.meta.env.BASE_URL;
 const DRACO = `${BASE}draco/`;
 const M = (f: string) => `${BASE}models/${f}`;
 
-export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb'), 2: M('lokasi3.glb'), 3: M('lokasi4.glb'), 4: M('lokasi5.glb') };
+export const LOKASI_GLB: Record<number, string> = { 0: M('lokasi1.glb'), 1: M('lokasi2.glb'), 2: M('lokasi3.glb'), 3: M('lokasi4.glb'), 4: M('lokasi5.glb'), 5: M('lokasi6.glb') };
 export const pakaiGlb = (lokasi: number) => lokasi in LOKASI_GLB;
 
 const MODEL: Record<string, string> = {
@@ -54,6 +54,8 @@ const MODEL: Record<string, string> = {
   kucing: M('npc-kucing-oren.glb'),
   kantoranL: M('npc-kantoran-putra.glb'),
   kantoranP: M('npc-kantoran-putri.glb'),
+  joggerL: M('npc-jogger-putra.glb'),
+  joggerP: M('npc-jogger-putri.glb'),
 };
 
 /** Model pembeli per segmen & lokasi. */
@@ -63,12 +65,20 @@ const PEMBELI: Record<number, Partial<Record<SegmentId, string[]>>> = {
   2: { warga: ['ibu', 'bapak'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
   3: { anakmuda: ['anakmuda'], pelajar: ['pelajarL', 'pelajarP'], ojol: ['ojol'] },
   4: { kantoran: ['kantoranL', 'kantoranP'], anakmuda: ['anakmuda'], warga: ['ibu', 'bapak'] },
+  5: { anakmuda: ['anakmuda', 'pelajarL', 'pelajarP'], warga: ['ibu', 'bapak', 'ibuBelanja'], kantoran: ['kantoranL', 'kantoranP'] },
 };
-const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'], 2: ['pelajarL', 'pelajarP', 'pelajarL', 'pelajarP', 'ibu', 'ojol'], 3: ['anakmuda', 'anakmuda', 'anakmuda', 'pelajarL', 'pelajarP', 'ojol', 'ibu'], 4: ['kantoranL', 'kantoranP', 'kantoranL', 'kantoranP', 'anakmuda', 'ibu', 'bapak', 'pelajarP'] };
-const PEJALAN_SERENTAK = [4, 6, 7, 8, 9];
-const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6], [1.4, 1.4], [1.2, 1.2], [1.0, 1.0]];
+const MODEL_LEWAT: Record<number, string[]> = { 0: ['ibu', 'bapak', 'anakmuda'], 1: ['ibu', 'ibuBelanja', 'anakmuda', 'ojol'], 2: ['pelajarL', 'pelajarP', 'pelajarL', 'pelajarP', 'ibu', 'ojol'], 3: ['anakmuda', 'anakmuda', 'anakmuda', 'pelajarL', 'pelajarP', 'ojol', 'ibu'], 4: ['kantoranL', 'kantoranP', 'kantoranL', 'kantoranP', 'anakmuda', 'ibu', 'bapak', 'pelajarP'], 5: ['anakmuda', 'ibu', 'anakmuda', 'bapak', 'kantoranP', 'pelajarP', 'ibuBelanja', 'kantoranL', 'pelajarL'] };
+const PEJALAN_SERENTAK = [4, 6, 7, 8, 9, 10];
+const JEDA_AMBIENT: [number, number][] = [[2.2, 2.0], [1.6, 1.6], [1.4, 1.4], [1.2, 1.2], [1.0, 1.0], [0.9, 0.9]];
 const MAX_AKTOR = 18;
 const SPEED = 1.1;
+
+/** Pelari jogging (visual saja, bukan pembeli): lari bolak-balik di sepanjang jalan, lebih cepat dari pejalan. */
+interface JogCfg { model: string[]; n: number; jeda: number; dari: string; ke: string; lajur: [number, number]; laju: [number, number] }
+const JOGGING: Record<number, JogCfg> = {
+  5: { model: ['joggerL', 'joggerP'], n: 9, jeda: 1.1, dari: 'E_jalan_barat', ke: 'E_jalan_timur', lajur: [-1.45, 1.45], laju: [2.1, 2.7] },
+};
+const LAJU_ANIM_JOG = 2.3; // laju (m/s) yang pas dengan klip 'Jog' pada timeScale 1
 
 for (const u of [...Object.values(LOKASI_GLB), ...Object.values(MODEL)]) useGLTF.preload(u, DRACO);
 
@@ -150,6 +160,18 @@ interface Aktor {
   mixer: AnimationMixer;
   acts: Record<string, AnimationAction>;
   cur: AnimationAction | null;
+}
+
+interface Jogger {
+  a: Aktor;
+  on: boolean;
+  t: number;
+  e: Vector3;
+  v: number;
+  fw: boolean;
+  off: number;
+  lo: number;
+  hi: number;
 }
 
 function buatAktor(gltf: GLTF, model: string): Aktor {
@@ -331,6 +353,77 @@ export function GlbWorld(p: GlbWorldProps) {
     return out;
   }, [world, models]);
 
+  // ---- pelari jogging ----
+  const jog = useMemo(() => {
+    const c = JOGGING[p.lokasi];
+    if (!c || !graf.WP[`WP_${c.dari}`] || !graf.WP[`WP_${c.ke}`]) return null;
+    const A0 = graf.P(c.dari), B0 = graf.P(c.ke);
+    const d = new Vector3().subVectors(B0, A0).setY(0).normalize();
+    const n = new Vector3(-d.z, 0, d.x);
+    const list: Jogger[] = [];
+    for (let i = 0; i < c.n; i++) {
+      const m = c.model[i % c.model.length];
+      if (!models[m]) continue;
+      const a = buatAktor(models[m], m);
+      a.g.visible = false;
+      list.push({ a, on: false, t: i * c.jeda * (0.5 + Math.random()), e: new Vector3(), v: 0, fw: true, off: 0, lo: 0, hi: 0 });
+    }
+    return { c, A0, B0, n, list };
+  }, [p.lokasi, graf, models]);
+
+  const larikan = (j: Jogger, dt: number) => {
+    const J = jog!;
+    if (!j.on) {
+      j.t -= dt;
+      if (j.t > 0) return;
+      const fw = Math.random() < 0.5, [l0, l1] = J.c.lajur, mid = (l0 + l1) / 2;
+      const lo = fw ? l0 : mid + 0.1, hi = fw ? mid - 0.1 : l1;
+      let off = lo, best = -1;
+      for (let k = 0; k < 6; k++) {
+        const c = lo + Math.random() * (hi - lo);
+        let m = 9;
+        for (const o of J.list) if (o.on && o.fw === fw) m = Math.min(m, Math.abs(o.off - c) + (0.25 * o.a.g.position.distanceTo(fw ? J.A0 : J.B0)) / 4);
+        if (m > best) { best = m; off = c; }
+      }
+      Object.assign(j, { fw, off, lo, hi, on: true, v: J.c.laju[0] + Math.random() * (J.c.laju[1] - J.c.laju[0]) });
+      j.a.g.position.copy(fw ? J.A0 : J.B0).addScaledVector(J.n, off);
+      j.e.copy(fw ? J.B0 : J.A0).addScaledVector(J.n, off);
+      j.a.g.rotation.set(0, Math.atan2(j.e.x - j.a.g.position.x, j.e.z - j.a.g.position.z), 0);
+      j.a.g.visible = true;
+      mainkan(j.a, 'Jog');
+      return;
+    }
+    const d = tmpJ.subVectors(j.e, j.a.g.position).setY(0);
+    const L = d.length();
+    if (L < 0.05) {
+      j.on = false;
+      j.a.g.visible = false;
+      j.t = J.c.jeda * (0.3 + Math.random() * 1.4);
+      return;
+    }
+    d.normalize();
+    let v = j.v, sisi = 0;
+    for (const o of J.list) {
+      if (o === j || !o.on || o.fw !== j.fw || Math.abs(o.off - j.off) > 0.42) continue;
+      const ah = (o.a.g.position.x - j.a.g.position.x) * d.x + (o.a.g.position.z - j.a.g.position.z) * d.z;
+      if (ah > 0 && ah < 1.4) {
+        let sd = j.off >= o.off ? 1 : -1;
+        if (j.off + sd * 0.3 > j.hi || j.off + sd * 0.3 < j.lo) sd = -sd;
+        sisi = sd;
+        if (ah < 0.7) v = Math.min(v, o.v * 0.98);
+      }
+    }
+    if (sisi) {
+      const sh = Math.max(j.lo, Math.min(j.hi, j.off + sisi * 0.9 * dt)) - j.off;
+      j.off += sh;
+      j.a.g.position.addScaledVector(J.n, sh);
+      j.e.addScaledVector(J.n, sh);
+    }
+    j.a.g.position.addScaledVector(d, Math.min(L, v * dt));
+    if (j.a.cur) j.a.cur.timeScale = v / LAJU_ANIM_JOG;
+  };
+  const tmpJ = useMemo(() => new Vector3(), []);
+
   // ---- NPC berjalan: pool ----
   const pool = useRef<Npc[]>([]);
   const queue = useRef<Npc[]>([]);
@@ -351,7 +444,7 @@ export function GlbWorld(p: GlbWorldProps) {
   const visual = useMemo(() => {
     if (!p.events) return [];
     const lewat = p.events.filter((e) => e.tipe === 'lewat' && !e.keluhan);
-    const keep = Math.min(1, ([18, 30, 40, 48, 56][p.lokasi] ?? 30) / Math.max(1, lewat.length));
+    const keep = Math.min(1, ([18, 30, 40, 48, 56, 64][p.lokasi] ?? 30) / Math.max(1, lewat.length));
     let acc = 0;
     return p.events.filter((e) => {
       if (e.tipe !== 'lewat' || e.keluhan) return true;
@@ -635,6 +728,7 @@ export function GlbWorld(p: GlbWorldProps) {
     }
   };
 
+  (window as unknown as Record<string, unknown>).__esk = { pool, queue, server, progress, datang, graf };
   useFrame(({ clock }, raw) => {
     const delta = Math.min(raw, 0.1) * (p.live ? p.speed : 1);
     if (water) water.position.y = waterY + Math.sin(clock.elapsedTime * 1.3) * 0.025;
@@ -684,7 +778,9 @@ export function GlbWorld(p: GlbWorldProps) {
       for (const n of pool.current) update(n, delta / sub);
       majukanAntrean(delta / sub);
       dispatch();
+      if (jog) for (const j of jog.list) larikan(j, delta / sub);
     }
+    if (jog) for (const j of jog.list) if (j.on) j.a.mixer.update(delta);
     for (const n of pool.current) if (n.state !== 'off') n.a.mixer.update(delta);
     for (const a of diam) a.mixer.update(delta);
     seller.mixer.update(delta);
@@ -705,6 +801,9 @@ export function GlbWorld(p: GlbWorldProps) {
       <primitive object={sellers.P.g} visible={p.penjual === 'P'} />
       {diam.map((a, i) => (
         <primitive key={i} object={a.g} />
+      ))}
+      {jog?.list.map((j, i) => (
+        <primitive key={`jog${i}`} object={j.a.g} />
       ))}
       <group ref={grupRef as never} />
       {bubbles.map((b) => (
